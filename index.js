@@ -2,7 +2,7 @@
 
 var EventEmitter = require('events').EventEmitter;
 var fs = require('fs');
-var bitcore = require('bitcore-lib');
+var bitcore = require('bitcore-lib-btcp');
 var bodyParser = require('body-parser');
 
 function LemonadeStand(options) {

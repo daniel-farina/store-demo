@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "bitcore-lib": "^0.13.15",
+    "bitcore-lib-btcp": "BTCPrivate/bitcore-lib-btcp",
     "body-parser": "^1.15.1"
   },
   "name": "lemonade-stand",
@@ -12,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bitpay/lemonade-stand.git"
+    "url": "git+https://github.com/BTCPrivate/store-demo.git"
   },
   "keywords": [
     "bitcore"
@@ -20,8 +20,8 @@
   "author": "BitPay",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/bitpay/lemonade-stand/issues"
+    "url": "https://github.com/BTCPrivate/store-demo/issues"
   },
-  "homepage": "https://github.com/bitpay/lemonade-stand#readme",
+  "homepage": "https://github.com/BTCPrivate/store-demo#readme",
   "private": true
 }

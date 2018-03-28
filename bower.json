@@ -6,7 +6,7 @@
   "authors": [
     "BitPay"
   ],
-  "description": "Tutorial service for Bitcore",
+  "description": "Tutorial service for BTCP Bitcore",
   "keywords": [
     "bitcore"
   ],
@@ -21,7 +21,7 @@
     "tests"
   ],
   "dependencies": {
-    "bitcore-lib": "~0.13.15",
+    "bitcore-lib-btcp": "BTCPrivate/bitcore-lib-btcp",
     "jquery": "~2.2.3",
     "jquery-qrcode": "*"
   }

@@ -6,25 +6,25 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/jquery/dist/jquery.js"></script>
   <script src="js/jquery-qrcode/jquery.qrcode.min.js"></script>
-  <script src="js/bitcore-lib/bitcore-lib.js"></script>
+  <script src="js/bitcore-lib-btcp/bitcore-lib-btcp.js"></script>
 </head>
 
 <body>
   <h1>Lemonade Stand</h1>
   <h2>Invoice</h2>
   <div id="qrcode"></div>
-  <p>Please send {{amount}} BTC to {{address}}</p>
+  <p>Please send {{amount}} BTCP to {{address}}</p>
   <h2>Transactions Received</h2>
   <ul id="txids">
   </ul>
 
   <script type="text/javascript">
-    $('#qrcode').qrcode("bitcoin:{{address}}?amount={{amount}}");
+    $('#qrcode').qrcode("bitcoinprivate:{{address}}?amount={{amount}}");
   </script>
 
   <script language="javascript">
-    var bitcore = require('bitcore-lib');
-    var socket = io('http://localhost:3001');
+    var bitcore = require('bitcore-lib-btcp');
+    var socket = io('http://localhost:8001');
     socket.on('bitcoind/addresstxid', function(data) {
       var address = bitcore.Address(data.address);
       if (address.toString() == '{{address}}') {
