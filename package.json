@@ -3,7 +3,7 @@
     "bitcore-lib-btcp": "BTCPrivate/bitcore-lib-btcp",
     "body-parser": "^1.15.1"
   },
-  "name": "lemonade-stand",
+  "name": "store-demo",
   "description": "Tutorial service for Bitcore",
   "version": "1.0.0",
   "main": "index.js",
