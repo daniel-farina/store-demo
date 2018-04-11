@@ -53,7 +53,7 @@ LemonadeStand.prototype.setupRoutes = function(app, express) {
 };
 
 LemonadeStand.prototype.getRoutePrefix = function() {
-  return 'lemonade-stand';
+  return 'store-demo';
 };
 
 LemonadeStand.prototype.filterInvoiceHTML = function() {
