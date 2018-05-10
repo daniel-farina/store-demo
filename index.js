@@ -2,7 +2,7 @@
 
 var EventEmitter = require('events').EventEmitter;
 var fs = require('fs');
-var bitcore = require('bitcore-lib-btcp');
+var bitcore = require('bitcore-lib');
 var bodyParser = require('body-parser');
 
 function LemonadeStand(options) {
@@ -13,18 +13,35 @@ function LemonadeStand(options) {
 
   this.invoiceHtml = fs.readFileSync(__dirname + '/invoice.html', 'utf8');
 
-  this.price = 12340000; // (sats)
-
   // Use a HD Private Key and generate a unique address for every invoice
-  //TODO generate/display once, and from then on, load same xprv ('merchant master private key') from an encrypted db
-  this.hdPrivateKey = new bitcore.HDPrivateKey(this.node.network);
-  //TODO reload this from db.lastAddressIndex
-  this.addressIndex = 0;
+  //TODO generate/display HDPrivateKey via script
+  //TODO save only HDPublicKey into Mongo (as 'xpub')
+  //let xpub = this.hdPrivateKey.deriveChild("m/44'/183'/" + this.product.index ?? 0 + "'").xpubkey;
+  Merchant.findOne({})
+  .select('xpub addressIndex')
+  .exec()
+  .then(m => {
+    this.xpub = m.xpub;
+  })
+  .catch(e => {
+    console.error(e);
+    return res.status(500).send({error: 'Failed to find Merchant in Mongo'});
+  });
 
-  //TODO implement item id's for multiple items; could use same xprv for all
+  //TODO Implement State Machine: AWAITING_PAYMENT -> FULL_AMOUNT_RECEIVED / TIMED_OUT / PARTIAL_AMOUNT_RECEIVED
+  //TODO Poll on all not-completed (!(timed_out || full_amount_received)) addresses (between 0 -> lastAddressIndex)
+  /*  we need to also listen on this srv, just like on invoice.html (client) -
 
-  this.log.info('xprv key:', this.hdPrivateKey);
-  this.log.info('addressIndex:', this.addressIndex);
+      var socket = io('http://localhost:8001');
+      socket.emit('subscribe', 'bitcoind/addresstxid', ['{{address}}']);
+      socket.on('bitcoind/addresstxid', function(data) {
+         var address = bitcore.Address(data.address);
+         if (address.toString() == '{{address}}') {
+           //TODO save an entry in db for each confirmed payment, for each relevant addr
+           //db.save({index: index, txid: txid, fromAddress, amount, time})
+           ...
+  */
+
 }
 
 LemonadeStand.dependencies = ['bitcoind'];
@@ -45,21 +62,6 @@ LemonadeStand.prototype.getPublishEvents = function() {
   return [];
 };
 
-  //TODO Implement State Machine: AWAITING_PAYMENT -> FULL_AMOUNT_RECEIVED / TIMED_OUT / PARTIAL_AMOUNT_RECEIVED
-
-  //TODO Poll on all not-completed (timed_out, full_amount_received) addresses (between 0 -> lastAddressIndex)
-  /*  we need to also listen, just like invoice.html -
-
-      var socket = io('http://localhost:8001');
-      socket.emit('subscribe', 'bitcoind/addresstxid', ['{{address}}']);
-      socket.on('bitcoind/addresstxid', function(data) {
-         var address = bitcore.Address(data.address);
-         if (address.toString() == '{{address}}') {
-           //TODO save an entry in db for each confirmed payment, for each relevant addr
-           //db.save({index: index, txid: txid, fromAddress, amount, time})
-           ...
-  */
-
 
 LemonadeStand.prototype.setupRoutes = function(app, express) {
   var self = this;
@@ -70,31 +72,59 @@ LemonadeStand.prototype.setupRoutes = function(app, express) {
 
   // This module will be installed as a service of Bitcore, which will be running on 8001.
 
-  // TO USE (Generate an invoice) -
-  // POST localhost:8001/invoice {amount: 100}
-  // (or visit localhost:8001)
+  // *** Invoice Server model ***
+  // To generate an invoice,
+  // POST localhost:8001/invoice {productID: String}
+  // (Starts at addressIndex `1`)
+  // TODO Rate limit per ip
+  // TODO deliveryEmail (optional)
+
+  // TODO represent as state machine on both client and srv - AWAITING_PAYMENT -> FULL_AMOUNT_RECEIVED / TIMED_OUT / PARTIAL_AMOUNT_RECEIVED
 
   app.post('/invoice', function(req, res, next) {
-    self.addressIndex++;
-    //TODO db.increment(lastAddressIndex)
-    //convert from btcp to sats (for static/index.html demo):
-    //self.price = parseFloat(req.body.price) * 1e8;
-    res.status(200).send(self.filterInvoiceHTML());
+    let productID = req.body.productID;
+    var addressIndex;
+
+    // Generate (next) fresh address & present invoice
+    Merchant.findOneAndUpdate({}, {$inc: {addressIndex: 1}})
+    .exec()
+    .then(m => {
+      addressIndex = m.addressIndex;
+      return Product.findById(productID).exec();
+    })
+    .then(p => {
+      return Invoice.create({addressIndex: addressIndex, productID: productID}).exec();
+    })
+    .then(i => {
+      // Content-Type: text/html
+      return res.status(200).send(self.buildInvoiceHTML(srv.addressIndex));
+    })
+    .catch(e => {
+      console.error(e);
+      return res.status(500).send({error: 'Failed to find Merchant/create Invoice in Mongo'});
+    });
   });
+
 };
 
 LemonadeStand.prototype.getRoutePrefix = function() {
   return 'store-demo';
 };
 
-LemonadeStand.prototype.filterInvoiceHTML = function() {
-  var btcp = this.price / 1e8;
-  var address = this.hdPrivateKey.derive(this.addressIndex).privateKey.toAddress();
+// Reason for new xpub each time - 1) no cost 2) if they make a tx mistake (when invoiced), they can do followup payments without much additional accounting logic
+LemonadeStand.prototype.buildInvoiceHTML = function(addressIndex) {
+  //TODO use queried products' prices
+  let price = 12340000; // (sats)
+  let btcpPrice = price / 1e8;
+
+  // Address for this invoice
+  let address = xpub.deriveChild("/0/" + addressIndex).privateKey.toAddress();
+
   this.log.info('New invoice, with generated address:', address);
 
-  var hash = address.hashBuffer.toString('hex'); //TODO shouldn't need this
+  var hash = address.hashBuffer.toString('hex');
   var transformed = this.invoiceHtml
-    .replace(/{{price}}/g, btcp)
+    .replace(/{{price}}/g, btcpPrice)
     .replace(/{{address}}/g, address)
     .replace(/{{hash}}/g, hash)
     .replace(/{{baseUrl}}/g, '/' + this.getRoutePrefix() + '/');
