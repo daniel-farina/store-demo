@@ -2,7 +2,7 @@
   "name": "store-demo",
   "main": "index.js",
   "version": "1.0.0",
-  "homepage": "https://github.com/bitpay/lemonade-stand",
+  "homepage": "https://github.com/BTCPrivate/store-demo",
   "authors": [
     "BitPay"
   ],
@@ -21,6 +21,6 @@
     "tests"
   ],
   "dependencies": {
-    "bitcore-lib": "BTCPrivate/bitcore-lib"
+    "bitcore-lib": "ch4ot1c/bitcore-lib"
   }
 }

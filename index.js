@@ -10,10 +10,11 @@ const Merchant = require('./models').Merchant;
 const Invoice = require('./models').Invoice;
 const Product = require('./models').Product;
 
-// Connect to MongoDB
 const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
 
-function LemonadeStand(options) {
+// This module will be installed as a service of Bitcore, which will be running on localhost:8001.
+
+function PizzaShop(options) {
   EventEmitter.call(this);
 
   this.node = options.node;
@@ -21,6 +22,7 @@ function LemonadeStand(options) {
 
   this.invoiceHtml = fs.readFileSync(__dirname + '/invoice.html', 'utf8');
 
+  // Connect to MongoDB
   mongoose.connect(DUMMY_MONGO_URL);
 
   Merchant.findOne({})
@@ -28,7 +30,6 @@ function LemonadeStand(options) {
   .exec()
   .then(m => {
     if (!m || m.xpub == null) {
-      // (generate_hd_wallet.js needs have been used by this time)
       return res.status(500).send({error: "xpub hasn't been set!!! Run `node generate_hd_wallets` offline."})
     } else {
       this.xpub = m.xpub;
@@ -48,45 +49,44 @@ function LemonadeStand(options) {
    var address = bitcore.Address(data.address);
    console.log(address);
      //TODO save an entry in db for each confirmed payment, for each relevant addr
-     //db.save({index: index, txid: txid, fromAddress, amount, time})
+     // index (or address), tx_id, address_paid, amount_paid, latest_paid_time, total_satoshis
   });
 
   //TODO disconnect mongoose, socket.io
 
 }
 
-LemonadeStand.dependencies = ['bitcoind'];
+PizzaShop.dependencies = ['bitcoind'];
 
-LemonadeStand.prototype.start = function(callback) {
+PizzaShop.prototype.start = function(callback) {
   setImmediate(callback);
 };
 
-LemonadeStand.prototype.stop = function(callback) {
+PizzaShop.prototype.stop = function(callback) {
   setImmediate(callback);
 };
 
-LemonadeStand.prototype.getAPIMethods = function() {
+PizzaShop.prototype.getAPIMethods = function() {
   return [];
 };
 
-LemonadeStand.prototype.getPublishEvents = function() {
+PizzaShop.prototype.getPublishEvents = function() {
   return [];
 };
 
 
-LemonadeStand.prototype.setupRoutes = function(app, express) {
+PizzaShop.prototype.setupRoutes = function(app, express) {
   var self = this;
 
   app.use(bodyParser.urlencoded({extended: true}));
 
+  // Serve 'static' dir at localhost:8001
   app.use('/', express.static(__dirname + '/static'));
-
-  // This module will be installed as a service of Bitcore, which will be running on 8001.
 
   // *** Invoice Server model ***
   // To generate an invoice,
   // POST localhost:8001/invoice {productID: String}
-  // (Starts at addressIndex `1`)
+  // (DB starts at addressIndex `1`)
   // TODO Rate limit per ip
   // TODO deliveryEmail (optional)
 
@@ -118,11 +118,11 @@ LemonadeStand.prototype.setupRoutes = function(app, express) {
 
 };
 
-LemonadeStand.prototype.getRoutePrefix = function() {
+PizzaShop.prototype.getRoutePrefix = function() {
   return 'store-demo';
 };
 
-LemonadeStand.prototype.buildInvoiceHTML = function(addressIndex, totalSatoshis) {
+PizzaShop.prototype.buildInvoiceHTML = function(addressIndex, totalSatoshis) {
   let price = total / 1e8; // (100,000,000 sats == 1 BTCP)
 
   // Address for this invoice
@@ -140,4 +140,4 @@ LemonadeStand.prototype.buildInvoiceHTML = function(addressIndex, totalSatoshis)
   return transformed;
 };
 
-module.exports = LemonadeStand;
+module.exports = PizzaShop;

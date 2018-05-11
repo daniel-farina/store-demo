@@ -32,6 +32,5 @@ var InvoiceSchema = new Schema({
 
 var Invoice = mongoose.model('Invoice', InvoiceSchema);
 
-//TODO created.at,_by
 
 module.exports = {Merchant: Merchant, Product: Product, Invoice: Invoice};
