@@ -6,7 +6,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/jquery/dist/jquery.js"></script>
   <script src="js/jquery-qrcode/jquery.qrcode.min.js"></script>
-  <script src="js/bitcore-lib-btcp/bitcore-lib-btcp.js"></script>
+  <script src="js/bitcore-lib/bitcore-lib.js"></script>
 </head>
 
 <body>
@@ -23,7 +23,7 @@
   </script>
 
   <script language="javascript">
-    var bitcore = require('bitcore-lib-btcp');
+    var bitcore = require('bitcore-lib');
     var socket = io('http://localhost:8001');
     socket.on('bitcoind/addresstxid', function(data) {
       var address = bitcore.Address(data.address);

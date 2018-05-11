@@ -4,6 +4,11 @@ var EventEmitter = require('events').EventEmitter;
 var fs = require('fs');
 var bitcore = require('bitcore-lib');
 var bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+
+// Connect to MongoDB
+const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
+mongoose.connect(DUMMY_MONGO_URL);
 
 function LemonadeStand(options) {
   EventEmitter.call(this);
@@ -17,6 +22,7 @@ function LemonadeStand(options) {
   //TODO generate/display HDPrivateKey via script
   //TODO save only HDPublicKey into Mongo (as 'xpub')
   //let xpub = this.hdPrivateKey.deriveChild("m/44'/183'/" + this.product.index ?? 0 + "'").xpubkey;
+
   Merchant.findOne({})
   .select('xpub addressIndex')
   .exec()
@@ -29,18 +35,16 @@ function LemonadeStand(options) {
   });
 
   //TODO Implement State Machine: AWAITING_PAYMENT -> FULL_AMOUNT_RECEIVED / TIMED_OUT / PARTIAL_AMOUNT_RECEIVED
-  //TODO Poll on all not-completed (!(timed_out || full_amount_received)) addresses (between 0 -> lastAddressIndex)
-  /*  we need to also listen on this srv, just like on invoice.html (client) -
+  //TODO reuse code from invoice.html (client)
 
-      var socket = io('http://localhost:8001');
-      socket.emit('subscribe', 'bitcoind/addresstxid', ['{{address}}']);
-      socket.on('bitcoind/addresstxid', function(data) {
-         var address = bitcore.Address(data.address);
-         if (address.toString() == '{{address}}') {
-           //TODO save an entry in db for each confirmed payment, for each relevant addr
-           //db.save({index: index, txid: txid, fromAddress, amount, time})
-           ...
-  */
+  var socket = io('http://localhost:8001');
+  socket.emit('subscribe', 'bitcoind/addresstxid', ['{{address}}']);
+  socket.on('bitcoind/addresstxid', function(data) {
+   var address = bitcore.Address(data.address);
+   console.log(address);
+     //TODO save an entry in db for each confirmed payment, for each relevant addr
+     //db.save({index: index, txid: txid, fromAddress, amount, time})
+  }
 
 }
 
@@ -93,7 +97,7 @@ LemonadeStand.prototype.setupRoutes = function(app, express) {
       return Product.findById(productID).exec();
     })
     .then(p => {
-      return Invoice.create({addressIndex: addressIndex, productID: productID}).exec();
+      return Invoice.create({addressIndex: addressIndex, productID: p.productID, amount: p.price}).exec();
     })
     .then(i => {
       // Content-Type: text/html
@@ -113,7 +117,6 @@ LemonadeStand.prototype.getRoutePrefix = function() {
 
 // Reason for new xpub each time - 1) no cost 2) if they make a tx mistake (when invoiced), they can do followup payments without much additional accounting logic
 LemonadeStand.prototype.buildInvoiceHTML = function(addressIndex) {
-  //TODO use queried products' prices
   let price = 12340000; // (sats)
   let btcpPrice = price / 1e8;
 
