@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
-const DUMMY_XPUB = 'xpub123';
 
 // --- Merchant ---
 
 var MerchantSchema = new Schema({
-  xpub: {type: String, default: DUMMY_XPUB},
+  xpub: {type: String, required: true},
   addressIndex: {type: Number, default: 0} 
 });
 

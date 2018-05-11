@@ -6,6 +6,10 @@ var bitcore = require('bitcore-lib');
 var bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 
+const Merchant = require('./models').Merchant;
+const Invoice = require('./models').Invoice;
+const Product = require('./models').Product;
+
 // Connect to MongoDB
 const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
 mongoose.connect(DUMMY_MONGO_URL);
@@ -18,10 +22,7 @@ function LemonadeStand(options) {
 
   this.invoiceHtml = fs.readFileSync(__dirname + '/invoice.html', 'utf8');
 
-  // Use a HD Private Key and generate a unique address for every invoice
-  //TODO generate/display HDPrivateKey via script
-  //TODO save only HDPublicKey into Mongo (as 'xpub')
-  //let xpub = this.hdPrivateKey.deriveChild("m/44'/183'/" + this.product.index ?? 0 + "'").xpubkey;
+  // (generate_hd_wallet.js needs to occur by this time)
 
   Merchant.findOne({})
   .select('xpub addressIndex')
@@ -121,7 +122,7 @@ LemonadeStand.prototype.buildInvoiceHTML = function(addressIndex) {
   let btcpPrice = price / 1e8;
 
   // Address for this invoice
-  let address = xpub.deriveChild("/0/" + addressIndex).privateKey.toAddress();
+  let address = this.xpub.deriveChild("/0/" + addressIndex).privateKey.toAddress();
 
   this.log.info('New invoice, with generated address:', address);
 
