@@ -1,37 +1,37 @@
 const mongoose = require('mongoose');
 var Schema = mongoose.Schema;
-
+var ObjectId = mongoose.Schema.Types.ObjectId;
 
 // --- Merchant ---
 
 var MerchantSchema = new Schema({
   xpub: {type: String, required: true},
-  addressIndex: {type: Number, default: 0} 
-});
+  address_index: {type: Number, default: 0} 
+}, {timestamps: true});
 
-// Compile model from schema
 var Merchant = mongoose.model('Merchant', MerchantSchema);
 
 // --- Product ---
 
 var ProductSchema = new Schema({
-  price: {type: Number, required: true},
+  price_satoshis: {type: Number, required: true},
   name: String 
-});
+}, {timestamps: true});
 
 var Product = mongoose.model('Product', ProductSchema);
 
 // --- Invoice ---
 
 var InvoiceSchema = new Schema({
-  productID: {type: String, required: true},
-  amount: {type: Number, required: true},
-  addressIndex: {type: Number, required: true},
-  btcpTxID: String
-});
+  product_id: {type: ObjectId, ref: 'Product', required: true},
+  total_satoshis: {type: Number, required: true},
+  address_index: {type: Number, required: true},
+  user_address: String,
+  blockchain_tx_id: String
+}, {timestamps: true});
 
 var Invoice = mongoose.model('Invoice', InvoiceSchema);
 
 //TODO created.at,_by
 
-module.export = {Merchant: Merchant, Product: Product, Invoice: Invoice};
+module.exports = {Merchant: Merchant, Product: Product, Invoice: Invoice};

@@ -3,10 +3,18 @@
 // BTCP - BIP44 + BIP39 / HD wallet setup
 
 const Mnemonic = require('bitcore-mnemonic');
-const Merchant = require('./models').Merchant;
 
 const externalAddrPath = "m/44'/183'/0'"; // BIP-0044 + SLIP-0044
+const seed = new Mnemonic(Mnemonic.Words.ENGLISH); // Generate
 
+// Mongoose
+const mongoose = require('mongoose');
+mongoose.Promise = require('bluebird'); //finally()
+
+const Merchant = require('./models.js').Merchant;
+
+const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
+mongoose.connect(DUMMY_MONGO_URL);
 
 console.log('\nGenerating your Master Private Key - this will only be shown ONCE!');
 console.log('\nThere are two representations - xprv or Mnemonic Seed Words. You will be shown both.');
@@ -17,7 +25,6 @@ console.log('\nFor reference the "HD Derivation Path" used is m/44\'/183\'0\'/0/
 //TODO Prompt for an optional password (should we even?)
 //const pwd = 'OPTIONAL PASSWORD';
 
-var seed = new Mnemonic(Mnemonic.Words.ENGLISH);
 var xprv = seed.toHDPrivateKey();
 
 var hdPublicKey = xprv.deriveChild(externalAddrPath).hdPublicKey;
@@ -29,21 +36,31 @@ Merchant.findOne({})
 .exec()
 .then(m => {
   if (m) {
-    m.xpub = xpubkey;
-    return m.save();
+    // Update/Replace?
+    if (m.xpub == null) { 
+      m.xpub = xpubkey;
+      return m.save();
+    } else { // Don't touch existing xpub
+      //console.log(m.xpub);
+      return mongoose.Promise.reject('\nYou already have an xpub!!! Script canceled.');
+    }
   } else {
     return Merchant.create({xpub: xpubkey});
   }
 })
 .then(m => {
-  console.log('Merchant added to mongo successfully: ', m);
+  //console.log('Merchant added to mongo successfully');
+  //console.log(m);
   setupReport();
 
-  // EXAMPLE - store-demo - select only the first address
-  firstAddress();
+  // EXAMPLE - store-demo - select an address
+  getAddress(0);
 })
 .catch(e => {
   console.error(e);
+})
+.finally(() => {
+  mongoose.disconnect();
 });
 
 
@@ -60,17 +77,13 @@ var setupReport = () => {
 
   console.log('\nMaster Public Key: ');
 
-  //TODO store xpubkey in mongo Merchant
   console.log('\nDerived xpub (this is now stored on your server, in MongoDB, to safely generate all addresses): ');
   console.log(xpubkey);
 
   console.log('\n---');
 }
 
-var firstAddress = () => {
-  const addressIndex = "0";
-
-  var address = hdPublicKey.deriveChild("m/0/" + addressIndex).publicKey.toAddress();
-  console.log('\nFirst address: ', address);
-  console.log('');
+var getAddress = (index) => {
+  var address = hdPublicKey.deriveChild("m/0/" + index).publicKey.toAddress();
+  console.log(`\n${index}: `, address);
 }

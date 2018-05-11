@@ -21,8 +21,6 @@
     "tests"
   ],
   "dependencies": {
-    "bitcore-lib-btcp": "BTCPrivate/bitcore-lib-btcp",
-    "jquery": "~2.2.3",
-    "jquery-qrcode": "*"
+    "bitcore-lib": "BTCPrivate/bitcore-lib"
   }
 }

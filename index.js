@@ -1,9 +1,9 @@
 'use strict';
 
 var EventEmitter = require('events').EventEmitter;
-var fs = require('fs');
-var bitcore = require('bitcore-lib');
-var bodyParser = require('body-parser');
+const fs = require('fs');
+const bitcore = require('bitcore-lib');
+const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 
 const Merchant = require('./models').Merchant;
@@ -12,7 +12,6 @@ const Product = require('./models').Product;
 
 // Connect to MongoDB
 const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
-mongoose.connect(DUMMY_MONGO_URL);
 
 function LemonadeStand(options) {
   EventEmitter.call(this);
@@ -22,13 +21,18 @@ function LemonadeStand(options) {
 
   this.invoiceHtml = fs.readFileSync(__dirname + '/invoice.html', 'utf8');
 
-  // (generate_hd_wallet.js needs to occur by this time)
+  mongoose.connect(DUMMY_MONGO_URL);
 
   Merchant.findOne({})
-  .select('xpub addressIndex')
+  .select('xpub')
   .exec()
   .then(m => {
-    this.xpub = m.xpub;
+    if (!m || m.xpub == null) {
+      // (generate_hd_wallet.js needs have been used by this time)
+      return res.status(500).send({error: "xpub hasn't been set!!! Run `node generate_hd_wallets` offline."})
+    } else {
+      this.xpub = m.xpub;
+    }
   })
   .catch(e => {
     console.error(e);
@@ -45,7 +49,9 @@ function LemonadeStand(options) {
    console.log(address);
      //TODO save an entry in db for each confirmed payment, for each relevant addr
      //db.save({index: index, txid: txid, fromAddress, amount, time})
-  }
+  });
+
+  //TODO disconnect mongoose, socket.io
 
 }
 
@@ -91,18 +97,18 @@ LemonadeStand.prototype.setupRoutes = function(app, express) {
     var addressIndex;
 
     // Generate (next) fresh address & present invoice
-    Merchant.findOneAndUpdate({}, {$inc: {addressIndex: 1}})
+    Merchant.findOneAndUpdate({}, {$inc: {address_index: 1}})
     .exec()
     .then(m => {
-      addressIndex = m.addressIndex;
+      addressIndex = m.address_index;
       return Product.findById(productID).exec();
     })
     .then(p => {
-      return Invoice.create({addressIndex: addressIndex, productID: p.productID, amount: p.price}).exec();
+      return Invoice.create({address_index: addressIndex, product_id: p._id, total_satoshis: p.price_satoshis}).exec();
     })
     .then(i => {
       // Content-Type: text/html
-      return res.status(200).send(self.buildInvoiceHTML(srv.addressIndex));
+      return res.status(200).send(self.buildInvoiceHTML(i.address_index, i.total_satoshis));
     })
     .catch(e => {
       console.error(e);
@@ -116,12 +122,11 @@ LemonadeStand.prototype.getRoutePrefix = function() {
   return 'store-demo';
 };
 
-// Reason for new xpub each time - 1) no cost 2) if they make a tx mistake (when invoiced), they can do followup payments without much additional accounting logic
-LemonadeStand.prototype.buildInvoiceHTML = function(addressIndex) {
-  let price = 12340000; // (sats)
-  let btcpPrice = price / 1e8;
+LemonadeStand.prototype.buildInvoiceHTML = function(addressIndex, totalSatoshis) {
+  let price = total / 1e8; // (100,000,000 sats == 1 BTCP)
 
   // Address for this invoice
+  // Here, "/0/" == External addrs, "/1/" == Internal (change) addrs
   let address = this.xpub.deriveChild("/0/" + addressIndex).privateKey.toAddress();
 
   this.log.info('New invoice, with generated address:', address);
