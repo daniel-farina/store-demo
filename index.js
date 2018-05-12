@@ -2,7 +2,7 @@
 
 var EventEmitter = require('events').EventEmitter;
 const fs = require('fs');
-const bitcore = require('bitcore-lib-btcp');
+const bitcore = require('bitcore-lib'); //with -btcp , brokenbip32 invoicing works
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 
@@ -100,7 +100,8 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
   // TODO represent as state machine on both client and srv - AWAITING_PAYMENT -> FULL_AMOUNT_RECEIVED / TIMED_OUT / PARTIAL_AMOUNT_RECEIVED
 
   app.post('/invoice', function(req, res, next) {
-    let productID = req.body.productID;
+    self.log.info('POST /invoice: ', req.body);
+    let productID = req.body._id || req.body.productID;
     var addressIndex;
 
     // Generate (next) fresh address & present invoice
@@ -111,14 +112,17 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
       return Product.findById(productID).exec();
     })
     .then(p => {
-      return Invoice.create({address_index: addressIndex, product_id: p._id, total_satoshis: p.price_satoshis}).exec();
+      if (!p) {
+        return mongoose.Promise.reject('No products in DB!');
+      }
+      return Invoice.create({address_index: addressIndex, product_id: p._id, total_satoshis: p.price_satoshis});
     })
     .then(i => {
       // Content-Type: text/html
       return res.status(200).send(self.buildInvoiceHTML(i.address_index, i.total_satoshis));
     })
     .catch(e => {
-      this.log.error(e);
+      self.log.error(e);
       return res.status(500).send({error: 'Failed to find Merchant/create Invoice in Mongo'});
     });
   });
@@ -130,17 +134,25 @@ PizzaShop.prototype.getRoutePrefix = function() {
 };
 
 PizzaShop.prototype.buildInvoiceHTML = function(addressIndex, totalSatoshis) {
-  let price = total / 1e8; // (100,000,000 sats == 1 BTCP)
+  let price = totalSatoshis / 1e8; // (100,000,000 sats == 1 BTCP)
+
 
   // Address for this invoice
   // Here, "/0/" == External addrs, "/1/" == Internal (change) addrs
-  let address = this.xpub.deriveChild("/0/" + addressIndex).privateKey.toAddress();
+  //TODO - bitcore-lib and deriveChild
+  //let b_new = require('bitcore-lib');  
+  let k = bitcore.HDPublicKey(this.xpub);
+  let address = k.derive("/0/" + addressIndex).publicKey.toAddress();
+  //let k = bitcore.HDPublicKey(this.xpub);
+  //let address = k.derive("m/0/" + addressIndex).publicKey.toAddress();
+
+  // Hash, aka the H of P2PKH or P2SH
+  let hash = address.hashBuffer.toString('hex');
 
   this.log.info('New invoice, with generated address:', address);
 
-  var hash = address.hashBuffer.toString('hex');
   var transformed = this.invoiceHtml
-    .replace(/{{price}}/g, btcpPrice)
+    .replace(/{{price}}/g, price)
     .replace(/{{address}}/g, address)
     .replace(/{{hash}}/g, hash)
     .replace(/{{baseUrl}}/g, '/' + this.getRoutePrefix() + '/');

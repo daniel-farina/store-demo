@@ -12,6 +12,7 @@ const mongoose = require('mongoose');
 mongoose.Promise = require('bluebird'); //finally()
 
 const Merchant = require('./models.js').Merchant;
+const Product = require('./models.js').Product;
 
 const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
 mongoose.connect(DUMMY_MONGO_URL);
@@ -49,12 +50,21 @@ Merchant.findOne({})
   }
 })
 .then(m => {
-  //console.log('Merchant added to mongo successfully');
+  //console.log('Merchant added to mongodb successfully');
   //console.log(m);
   setupReport();
 
-  // EXAMPLE - store-demo - select an address
-  getAddress(0);
+  // EXAMPLE - derive address by index
+  let index = 0;
+  console.log(`\nIndex ${index}: ${getAddress(index)}`);
+
+  // EXAMPLE - initial dummy product 'pizza'
+  return Product.create({name: 'pizza', price_satoshis: '690000000'});
+})
+.then(p => { 
+  // EXAMPLE - display us product._id to test with
+  console.log(`Product ${p.name} created in mongodb; product._id: ${p._id}`);
+  console.log('Try it at localhost:8001/store-demo/index.html');
 })
 .catch(e => {
   console.error(e);
@@ -63,6 +73,9 @@ Merchant.findOne({})
   mongoose.disconnect();
 });
 
+var getAddress = (index) => {
+  return hdPublicKey.deriveChild("m/0/" + index).publicKey.toAddress();
+}
 
 // --- Setup Report ---
 var setupReport = () => {
@@ -83,7 +96,3 @@ var setupReport = () => {
   console.log('\n---');
 }
 
-var getAddress = (index) => {
-  var address = hdPublicKey.deriveChild("m/0/" + index).publicKey.toAddress();
-  console.log(`\n${index}: `, address);
-}
