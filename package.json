@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "bitcore-lib": "ch4ot1c/bitcore-lib",
-    "bitcore-mnemonic": "ch4ot1c/bitcore-mnemonic",
+    "bitcore-lib": "github:ch4ot1c/bitcore-lib",
+    "bitcore-mnemonic": "github:ch4ot1c/bitcore-mnemonic",
     "body-parser": "^1.15.1",
     "bluebird": "^3.5.1",
     "mongoose": "^5.1.0"

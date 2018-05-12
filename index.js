@@ -2,7 +2,7 @@
 
 var EventEmitter = require('events').EventEmitter;
 const fs = require('fs');
-const bitcore = require('bitcore-lib'); //with -btcp , brokenbip32 invoicing works
+const bitcore = require('bitcore-lib-btcp');// BROKEN BIP32!!!
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 
@@ -136,15 +136,14 @@ PizzaShop.prototype.getRoutePrefix = function() {
 PizzaShop.prototype.buildInvoiceHTML = function(addressIndex, totalSatoshis) {
   let price = totalSatoshis / 1e8; // (100,000,000 sats == 1 BTCP)
 
-
   // Address for this invoice
   // Here, "/0/" == External addrs, "/1/" == Internal (change) addrs
-  //TODO - bitcore-lib and deriveChild
+  //TODO - use correct lib+method - bitcore-lib and deriveChild
   //let b_new = require('bitcore-lib');  
+  //let k = b_new.HDPublicKey(this.xpub);
+  //let address = k.deriveChild("/0/" + addressIndex).publicKey.toAddress();
   let k = bitcore.HDPublicKey(this.xpub);
-  let address = k.derive("/0/" + addressIndex).publicKey.toAddress();
-  //let k = bitcore.HDPublicKey(this.xpub);
-  //let address = k.derive("m/0/" + addressIndex).publicKey.toAddress();
+  let address = k.derive("m/0/" + addressIndex).publicKey.toAddress();
 
   // Hash, aka the H of P2PKH or P2SH
   let hash = address.hashBuffer.toString('hex');
