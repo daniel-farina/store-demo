@@ -27,26 +27,26 @@ console.log('\nFor reference the "HD Derivation Path" used is m/44\'/183\'0\'/0/
 //const pwd = 'OPTIONAL PASSWORD';
 
 var xprv = seed.toHDPrivateKey();
+var xpub = xprv.hdPublicKey;
 
-var hdPublicKey = xprv.deriveChild(externalAddrPath).hdPublicKey;
+var derivedHDPublicKey = xprv.deriveChild(externalAddrPath).hdPublicKey;
+var derivedXpubkey = derivedHDPublicKey.xpubkey.toString();
 
-var xpubkey = hdPublicKey.xpubkey.toString();
-
-// Store xpub in (only/Singleton) mongo Merchant
+// Store derived xpub (for address generation) in only one mongodb Merchant
 Merchant.findOne({})
 .exec()
 .then(m => {
   if (m) {
     // Update/Replace?
     if (m.xpub == null) { 
-      m.xpub = xpubkey;
+      m.xpub = derivedXpubkey;
       return m.save();
     } else { // Don't touch existing xpub
       //console.log(m.xpub);
-      return mongoose.Promise.reject('\nYou already have an xpub!!! Script canceled.');
+      return mongoose.Promise.reject('\nYou already have an xpub for address generation!!! Script canceled.');
     }
   } else {
-    return Merchant.create({xpub: xpubkey});
+    return Merchant.create({xpub: derivedXpubkey});
   }
 })
 .then(m => {
@@ -56,15 +56,15 @@ Merchant.findOne({})
 
   // EXAMPLE - derive address by index
   let index = 0;
-  console.log(`\nIndex ${index}: ${getAddress(index)}`);
+  console.log(`\nIndex ${index}: ${getAddress(derivedHDPublicKey, index)}`);
 
   // EXAMPLE - initial dummy product 'pizza'
   return Product.create({name: 'pizza', price_satoshis: '690000000'});
 })
 .then(p => { 
   // EXAMPLE - display us product._id to test with
-  console.log(`Product ${p.name} created in mongodb; product._id: ${p._id}`);
-  console.log('Try it at localhost:8001/store-demo/index.html');
+  console.log(`\nDemo Product - ${p.name} - created in mongodb. product._id: ${p._id}`);
+  console.log('\nTry it at localhost:8001/store-demo/index.html\n');
 })
 .catch(e => {
   console.error(e);
@@ -73,25 +73,28 @@ Merchant.findOne({})
   mongoose.disconnect();
 });
 
-var getAddress = (index) => {
-  return hdPublicKey.deriveChild("m/0/" + index).publicKey.toAddress();
+var getAddress = (baseHDPublicKey, index) => {
+  return baseHDPublicKey.deriveChild("m/0/" + index).publicKey.toAddress();
 }
 
 // --- Setup Report ---
 var setupReport = () => {
   console.log('\n---');
-  console.log('\nMaster Private Key: ');
-  console.log('\nSHH! - you never need to input or display these, even on your own server.');
+  console.log('\n- SHH! - you never need to input or display these, even on your own server. -');
 
-  console.log('\nxprv: ');
+  console.log('\nMaster Private Key: ');
   console.log(xprv.toString());
+
   console.log('\nMnemonic Seed Words (easier to write down) ("HD Derivation Path" is m/44\'/183\'/0\'): ');
   console.log(seed.toString());
 
-  console.log('\nMaster Public Key: ');
+  console.log('\n\nThe following is used to generate your future invoice addresses: ');
 
-  console.log('\nDerived xpub (this is now stored on your server, in MongoDB, to safely generate all addresses): ');
-  console.log(xpubkey);
+  console.log('\nMaster Public Key: ');
+  console.log(xpub.toString());
+
+  console.log('\nDerived xpub (at path m/44\'/183\'/0\') (this is now stored on your server, in MongoDB, for address generation): ');
+  console.log(derivedXpubkey);
 
   console.log('\n---');
 }

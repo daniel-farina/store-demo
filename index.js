@@ -2,7 +2,7 @@
 
 var EventEmitter = require('events').EventEmitter;
 const fs = require('fs');
-const bitcore = require('bitcore-lib-btcp');// BROKEN BIP32!!!
+const bitcore = require('bitcore-lib');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 
