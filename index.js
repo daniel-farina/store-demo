@@ -2,20 +2,20 @@
 
 var EventEmitter = require('events').EventEmitter;
 const fs = require('fs');
-const bitcore = require('bitcore-lib');
+const bitcore = require('bitcore-lib');// BROKEN BIP32!!!
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+var path = require("path");
+var exec = require('child_process').exec;
+
+var config = require('read-config')(path.join(__dirname, 'config.json'));
 
 //const io = require('socket.io');
 
 const Merchant = require('./models').Merchant;
 const Invoice = require('./models').Invoice;
 const Product = require('./models').Product;
-
 const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
-
-// This module will be installed as a service of Bitcore, which will be running on localhost:8001.
-// TEST - `localhost:8001/store-demo/index.html`
 
 function PizzaShop(options) {
   EventEmitter.call(this);
@@ -43,7 +43,6 @@ function PizzaShop(options) {
       this.log.error(e);
     });
   }, e => { this.log.error(e.message); });
-
 
   //TODO Implement State Machine: AWAITING_PAYMENT -> FULL_AMOUNT_RECEIVED / TIMED_OUT / PARTIAL_AMOUNT_RECEIVED
   //TODO reuse code from invoice.html (client)
@@ -99,6 +98,135 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
 
   // TODO represent as state machine on both client and srv - AWAITING_PAYMENT -> FULL_AMOUNT_RECEIVED / TIMED_OUT / PARTIAL_AMOUNT_RECEIVED
 
+  // /generate_merchant_wallet path
+  app.get('/generate_merchant_wallet', function (req, res) {
+    // Check we have correct API key
+    if (req.query.apikey != config.apiKey) {
+      console.log("\x1b[31mGenerating wallet - API key not provided or incorect: "+req.query.apikey+"\x1b[0m");
+      res.send(
+        '{\n'+
+        '  "status"        : "error",\n'+
+        '  "statusMessage" : "no API key provided or incorrect"\n'+
+        '}'
+      )
+    } else {
+      // Execute our file with 'browser' process scope argument
+      var cp = exec('node ~/btcp-explorer/node_modules/store-demo/generate_merchant_wallet.js -browser '
+        +parseInt(req.query.merchantid,10), function callback(error, stdout, stderr){
+        // If error, console log it, return error JSON
+        if (error) {
+          console.log(error)
+          res.send(
+            '{\n'+
+            '  "status"        : "error",\n'+
+            '  "statusMessage" : "callback error when generating merchant wallet"\n'+
+            '}'
+          )
+        // If strerr, console log it, return error JSON
+        } else if (stderr != "") {
+          console.log(stderr)
+          res.send(
+            '{\n'+
+            '  "status"        : "error",\n'+
+            '  "statusMessage" : "stderr when generating merchant wallet"\n'+
+            '}'
+          )
+        // If successful stdout, return JSON
+        } else {
+          res.send(stdout)
+        }
+        // Kill the child process
+        cp.kill('SIGINT')
+      });
+    }
+  })
+
+  // /get_wallet_address path
+  app.get('/get_wallet_address', function (req, res) {
+    // Check we have correct API key
+    if (req.query.apikey != config.apiKey) {
+      console.log("\x1b[31mGetting wallet address - API key not provided or incorect: "+req.query.apikey+"\x1b[0m");
+      res.send(
+        '{\n'+
+        '  "status"        : "error",\n'+
+        '  "statusMessage" : "no API key provided or incorrect"\n'+
+        '}'
+      )
+    } else {
+      // Execute our file with 'browser' process scope argument
+      var cp = exec('node ~/btcp-explorer/node_modules/store-demo/get_wallet_address.js -browser '
+       +parseInt(req.query.merchantid,10), function callback(error, stdout, stderr){
+        // If error, console log it, return error JSON
+        if (error) {
+          console.log(error)
+          res.send(
+            '{\n'+
+            '  "status"        : "error",\n'+
+            '  "statusMessage" : "callback error when getting wallet address"\n'+
+            '}'
+          )
+        // If strerr, console log it, return error JSON
+        } else if (stderr != "") {
+          console.log(stderr)
+          res.send(
+            '{\n'+
+            '  "status"        : "error",\n'+
+            '  "statusMessage" : "stderr when getting wallet address"\n'+
+            '}'
+          )
+        // If successful stdout, return JSON
+        } else {
+          res.send(stdout)
+        }
+        // Kill the child process
+        cp.kill('SIGINT')
+      });
+    }
+  })
+
+  // /complete_transaction path
+  app.get('/complete_transaction', function (req, res) {
+    // Check we have correct API key
+    if (req.query.apikey != config.apiKey) {
+      console.log("\x1b[31mCompleting transaction - API key not provided or incorect: "+req.query.apikey+"\x1b[0m");
+      res.send(
+        '{\n'+
+        '  "status"        : "error",\n'+
+        '  "statusMessage" : "no API key provided or incorrect"\n'+
+        '}'
+      )
+    } else {
+      // Execute our file with 'browser' process scope argument
+      var cp = exec('node ~/btcp-explorer/node_modules/store-demo/complete_transaction.js -browser', function callback(error, stdout, stderr){
+        // If error, console log it, return error JSON
+        if (error) {
+          console.log(error)
+          res.send(
+            '{\n'+
+            '  "status"        : "error",\n'+
+            '  "statusMessage" : "callback error when completing transaction"\n'+
+            '}'
+          )
+        // If strerr, console log it, return error JSON
+        } else if (stderr != "") {
+          console.log(stderr)
+          res.send(
+            '{\n'+
+            '  "status"        : "error",\n'+
+            '  "statusMessage" : "stderr when getting completing transaction"\n'+
+            '}'
+          )
+        // If successful stdout, return JSON
+        } else {
+          res.send(stdout)
+        }
+        // Kill the child process
+        cp.kill('SIGINT')
+      });
+    }
+  })
+
+  /*
   app.post('/invoice', function(req, res, next) {
     self.log.info('POST /invoice: ', req.body);
     let productID = req.body._id || req.body.productID;
@@ -126,6 +254,7 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
       return res.status(500).send({error: 'Failed to find Merchant/create Invoice in Mongo'});
     });
   });
+  */
 
 };
 
