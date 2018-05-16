@@ -131,13 +131,15 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
             '  "statusMessage" : "stderr when generating merchant wallet"\n'+
             '}'
           )
-        // If successful stdout, return JSON
+        // If successful stdout, return JSON (need to chop off any string to the left
+        // of array which seems to be output by bitcore lib
         } else {
-          res.send(stdout)
+          res.setHeader('Content-Type', 'application/json');
+          res.send(stdout.substr(stdout.indexOf("{")))
         }
         // Kill the child process
         cp.kill('SIGINT')
-      });
+      }, function(err) { console.log(err); });
     }
   })
 
@@ -174,9 +176,11 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
             '  "statusMessage" : "stderr when getting wallet address"\n'+
             '}'
           )
-        // If successful stdout, return JSON
+        // If successful stdout, return JSON (need to chop off any string to the left
+        // of array which seems to be output by bitcore lib
         } else {
-          res.send(stdout)
+          res.setHeader('Content-Type', 'application/json');
+          res.send(stdout.substr(stdout.indexOf("{")))
         }
         // Kill the child process
         cp.kill('SIGINT')
@@ -216,9 +220,11 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
             '  "statusMessage" : "stderr when getting completing transaction"\n'+
             '}'
           )
-        // If successful stdout, return JSON
+        // If successful stdout, return JSON (need to chop off any string to the left
+        // of array which seems to be output by bitcore lib
         } else {
-          res.send(stdout)
+          res.setHeader('Content-Type', 'application/json');
+          res.send(stdout.substr(stdout.indexOf("{")))
         }
         // Kill the child process
         cp.kill('SIGINT')
