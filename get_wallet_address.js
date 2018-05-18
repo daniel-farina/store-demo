@@ -1,12 +1,52 @@
 'use strict';
 
+// Set initial details, also set here for global scoping reasons
+var baseHDPubKey = ""
+var addressIndex = 0
+var widgetAddress = ""
+
+// Output error according to our processScope
+var outputError = function(error) {
+  if (processScope == "CLI") {
+    console.log(
+      'Error: '+error+
+      ' for merchant ID: '+merchantID+
+      ', wallet ID: '+walletID+
+      ', address index: '+addressIndex+
+      ', derived xpub: '+derivedXPub
+    );
+  }
+/*
+  if (processScope == "browser") {
+    process.stderr.write(
+      '{\n'+
+      '  "status"        : "error",\n'+
+      '  "statusMessage" : "'+error+'"\n'+
+      '}'
+    )
+  }
+*/
+}
+
 // Detect if calling via CLi or API
 const processScope = process.argv[2] == "-browser"
   ? "browser"
   : "CLI"
 
-// Get merchant ID
+// Get merchant ID, wallet ID and derived XPub
 const merchantID = process.argv[3];
+const walletID = process.argv[4];
+const derivedXPub = process.argv[5];
+
+// Check we have all we need to proceed
+/*
+TOOD - Get this revised and finalised
+if (!merchantID || merchantID < 0 ||
+    !walletID || walletID < 0 ||
+    !derivedXPub) {
+//   outputError('Sorry, not all arguments expected were received');
+}
+*/
 
 // Get bitcore and path
 const bitcore = require('bitcore-lib');// BROKEN BIP32!!!
@@ -22,11 +62,6 @@ const Product = require('./models.js').Product;
 
 // Get our options object
 var options = require('read-config')(path.join(__dirname, '/../../bitcore-node.json')).servicesConfig['store-demo'];
-
-// Set initial details, also for global scoping reasons
-var baseHDPubKey = ""
-var addressIndex = 0
-var widgetAddress = ""
 
 // Set out dummy URL and start a connection
 const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
@@ -45,36 +80,71 @@ mongoose.connect(options.mongoURL || DUMMY_MONGO_URL, null).then(m => {
     )
   }
 
-  // Find our merchant, increment address_index and get the new wallet address
+  // Find our merchant & wallet combo
   Merchant.findOne(
-    { merchant_id : merchantID }
+    {
+      merchant_id : merchantID,
+      wallet_id : walletID
+    }
   )
   .exec()
   .then(m => {
+    // If we have an entry for this combo
     if (m) {
-      // Should do something if not found!
+      // IF not found xpub, insert an entry
       if (m.xpub == null) {
-//      DO SOMETHING?
+        try {
+          baseHDPubKey = new bitcore.HDPublicKey(derivedXPub);
+        } catch(error) {
+          outputError(error);
+          mongoose.disconnect();
+          process.exit(0);
+        }
+        // Save the derived xpub
+        m.xpub = derivedXPub;
+        return m.save();
+      // We have an xpub, increment address_index
       } else {
         // Get HD pub key and address index
-        baseHDPubKey = new bitcore.HDPublicKey(m.xpub)
-        addressIndex = m.address_index
+        try {
+          baseHDPubKey = new bitcore.HDPublicKey(m.xpub);
+        } catch(error) {
+          outputError(error);
+          mongoose.disconnect();
+          process.exit(0);
+        }
+        addressIndex = m.address_index;
         // Increment address_index ready for next time
         Merchant.update(
           {'xpub': m.xpub},
           {$inc: {address_index: 1}},
           {multi: true},
           function(err, result) {
-//            console.log(result);
-//            console.log(err);
-            mongoose.disconnect();
-            process.exit(0);
+              mongoose.disconnect();
+              process.exit(0);
           })
-
-        // We now have the derived HD pub key and address index
-        baseHDPubKey = new bitcore.HDPublicKey(m.xpub)
-        addressIndex = m.address_index
       }
+    // No entry found, we need to create one
+    } else {
+      try {
+        baseHDPubKey = new bitcore.HDPublicKey(derivedXPub);
+      } catch(error) {
+        outputError(error);
+        mongoose.disconnect();
+        process.exit(0);
+      }
+      // Add the entry and set address_index to to 1 for next time
+      return Merchant.create({
+        merchant_id: merchantID,
+        wallet_id: walletID,
+        xpub: derivedXPub,
+        address_index: 1
+      },
+      function(err, result) {
+              mongoose.disconnect();
+              process.exit(0);
+         }
+      );
     }
   })
   .then(m => {
@@ -102,26 +172,31 @@ mongoose.connect(options.mongoURL || DUMMY_MONGO_URL, null).then(m => {
 
 // Function to get widget address
 var getAddress = (baseHDPublicKey, index) => {
-  return baseHDPublicKey.deriveChild("m/0/" + index).publicKey.toAddress();
+  try {
+    return baseHDPublicKey.deriveChild("m/0/" + index).publicKey.toAddress();
+  } catch(error) {
+    outputError(error);
+  }
 }
 
 // Output data according to our processScope
 var outputData = function() {
   if (processScope == "CLI") {
     console.log(
-      "Merchant ID: "+merchantID+"\n"+
-      "Address Index: "+addressIndex+"\n"+
-      "Widget Address: "+widgetAddress+
+      "Merchant ID    : "+merchantID+"\n"+
+      "Wallet ID      : "+walletID+"\n"+
+      "Address Index  : "+addressIndex+"\n"+
+      "Widget Address : "+widgetAddress+
       "\n\x1b[0m"
     );
   }
-
   if (processScope == "browser") {
     process.stdout.write(
       '{\n'+
       '  "status"        : "ok",\n'+
       '  "statusMessage" : "success",\n'+
       '  "merchantID"    : '+merchantID+',\n'+
+      '  "walletID"      : '+walletID+',\n'+
       '  "addressIndex"  : '+addressIndex+',\n'+
       '  "widgetAddress" : "'+widgetAddress+'"\n'+
       '}'
