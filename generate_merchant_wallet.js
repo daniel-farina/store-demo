@@ -1,12 +1,16 @@
 'use strict';
 
+// DO NOT RUN THIS FILE FROM THE BROWSER, SHOULD BE RUN ON SERVER ONLY IF REALLY NEEDED
+
 // Detect if calling via CLi or API
 const processScope = process.argv[2] == "-browser"
   ? "browser"
   : "CLI"
 
-// Get merchant ID
+// Get merchant ID, wallet ID and derived XPub
 const merchantID = process.argv[3];
+const walletID = process.argv[4];
+const derivedXPub = process.argv[5];
 
 // BTCP - BIP44 + BIP39 / HD wallet setup
 
@@ -56,20 +60,24 @@ mongoose.connect(options.mongoURL || DUMMY_MONGO_URL, null).then(m => {
       '\x1b[0m\n'
     )
   }
-  //TODO console.log("Press 'Y' to generate and display your Master Private Key"); 
+  //TODO console.log("Press 'Y' to generate and display your Master Private Key");
 
   //TODO Prompt for an optional password (should we even?)
   //const pwd = 'OPTIONAL PASSWORD';
 
   // Store derived xpub (for address generation) in only one mongodb Merchant
-  Merchant.findOne({
-    merchant_id : merchantID
-  })
+  Merchant.findOne(
+    {
+      merchant_id : merchantID,
+      wallet_id : walletID
+    }
+  )
   .exec()
   .then(m => {
     if (m) {
       // Update/Replace?
-      if (m.xpub == null) { 
+      if (m.xpub == null) {
+        m.wallet_id = walletID;
         m.xpub = derivedXpubkey;
         return m.save();
       } else { // Don't touch existing xpub
@@ -88,7 +96,12 @@ mongoose.connect(options.mongoURL || DUMMY_MONGO_URL, null).then(m => {
         }
       }
     } else {
-      return Merchant.create({merchant_id: merchantID, xpub: derivedXpubkey});
+      return Merchant.create({
+        merchant_id: merchantID,
+        wallet_id: walletID,
+        xpub: derivedXpubkey,
+        address_index: 0
+      });
     }
   })
   .then(m => {
@@ -97,7 +110,7 @@ mongoose.connect(options.mongoURL || DUMMY_MONGO_URL, null).then(m => {
     // EXAMPLE - initial dummy product 'pizza'
     // return Product.create({product_id: 1, invoice_id: 2, description: 'pizza', price_satoshis: '6912345678'});
   })
-  .then(p => { 
+  .then(p => {
     // EXAMPLE - display us product._id to test with
     // console.log(`\x1b[33mDemo Product - ${p.name} - created in mongodb. product._id: \x1b[0m${p._id}`);
     // console.log('\nTry it at localhost:8001/store-demo/index.html\n');
@@ -123,6 +136,8 @@ var outputPrivateData = () => {
       '\x1b[32m=== PRIVATE DATA ===\n\x1b[0mUou never need to input or display these, even on your own server.\n\n'+
       '\x1b[33mMerchant ID:\n'+
       '\x1b[0m'+merchantID+'\n\n'+
+      '\x1b[33mWallet ID:\n'+
+      '\x1b[0m'+walletID+'\n\n'+
       '\x1b[33mMaster Private Key:\n'+
       '\x1b[0m'+xprv.toString()+'\n\n'+
       '\x1b[33mMnemonic Seed Words (easier to write down) ("HD Derivation Path" is m/44\'/183\'/0\'):\n'+
@@ -141,6 +156,7 @@ var outputPrivateData = () => {
       '  "status"        : "ok",\n'+
       '  "statusMessage" : "success",\n'+
       '  "merchantID"    : '+merchantID+',\n'+
+      '  "walletID"      : '+walletID+',\n'+
       '  "xprv"          : "'+xprv.toString()+'",\n'+
       '  "seed"          : "'+seed.toString()+'",\n'+
       '  "xpub"          : "'+xpub.toString()+'",\n'+
