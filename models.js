@@ -6,8 +6,9 @@ var ObjectId = mongoose.Schema.Types.ObjectId;
 
 var MerchantSchema = new Schema({
   merchant_id: {type: Number, required: true},
+  wallet_id: {type: Number, required: true},
   xpub: {type: String, required: true},
-  address_index: {type: Number, default: 0} 
+  address_index: {type: Number, default: 0}
 }, {timestamps: true});
 
 var Merchant = mongoose.model('Merchant', MerchantSchema);
