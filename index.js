@@ -1,5 +1,20 @@
 'use strict';
 
+// Output error according to our processScope
+var outputError = function(error) {
+  console.log(
+    'Error: '+error+
+    ' for merchant ID: '+req.query.merchantid+
+    ', wallet ID: '+req.query.walletid+
+    ', derived xpub: '+req.query.derivedxpud
+  );
+  return
+    '{\n'+
+    '  "status"        : "error",\n'+
+    '  "statusMessage" : "'+error+'"\n'+
+    '}'
+}
+
 var EventEmitter = require('events').EventEmitter;
 const fs = require('fs');
 const bitcore = require('bitcore-lib');// BROKEN BIP32!!!
@@ -34,9 +49,9 @@ function PizzaShop(options) {
     .exec()
     .then(m => {
       if (!m || m.xpub == null) {
-	return mongoose.Promise.reject("xpub hasn't been set!!! Run `node generate_hd_wallets` offline.");
+        return mongoose.Promise.reject("xpub hasn't been set!!! Run `node generate_hd_wallets` offline.");
       } else {
-	this.xpub = m.xpub;
+        this.xpub = m.xpub;
       }
     })
     .catch(e => {
@@ -98,53 +113,17 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
 
   // TODO represent as state machine on both client and srv - AWAITING_PAYMENT -> FULL_AMOUNT_RECEIVED / TIMED_OUT / PARTIAL_AMOUNT_RECEIVED
 
-  // /generate_merchant_wallet path
-  app.get('/generate_merchant_wallet', function (req, res) {
-    // Check we have correct API key
-    if (req.query.apikey != config.apiKey) {
-      console.log("\x1b[31mGenerating wallet - API key not provided or incorect: "+req.query.apikey+"\x1b[0m");
-      res.send(
-        '{\n'+
-        '  "status"        : "error",\n'+
-        '  "statusMessage" : "no API key provided or incorrect"\n'+
-        '}'
-      )
-    } else {
-      // Execute our file with 'browser' process scope argument
-      var cp = exec('node ~/btcp-explorer/node_modules/store-demo/generate_merchant_wallet.js -browser '
-        +parseInt(req.query.merchantid,10), function callback(error, stdout, stderr){
-        // If error, console log it, return error JSON
-        if (error) {
-          console.log(error)
-          res.send(
-            '{\n'+
-            '  "status"        : "error",\n'+
-            '  "statusMessage" : "callback error when generating merchant wallet"\n'+
-            '}'
-          )
-        // If strerr, console log it, return error JSON
-        } else if (stderr != "") {
-          console.log(stderr)
-          res.send(
-            '{\n'+
-            '  "status"        : "error",\n'+
-            '  "statusMessage" : "stderr when generating merchant wallet"\n'+
-            '}'
-          )
-        // If successful stdout, return JSON (need to chop off any string to the left
-        // of array which seems to be output by bitcore lib
-        } else {
-          res.setHeader('Content-Type', 'application/json');
-          res.send(stdout.substr(stdout.indexOf("{")))
-        }
-        // Kill the child process
-        cp.kill('SIGINT')
-      }, function(err) { console.log(err); });
-    }
-  })
-
   // /get_wallet_address path
   app.get('/get_wallet_address', function (req, res) {
+// Check we have all we need to proceed
+/*
+    TODO: Revise this
+    if (!req.query.merchantid || req.query.merchantid < 0 ||
+      !req.query.walletid || req.query.walletid < 0 ||
+      !req.query.derivedxpub) {
+      res.send(outputError('Sorry, not all arguments expected were received'));
+    }
+*/
     // Check we have correct API key
     if (req.query.apikey != config.apiKey) {
       console.log("\x1b[31mGetting wallet address - API key not provided or incorect: "+req.query.apikey+"\x1b[0m");
@@ -157,14 +136,19 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
     } else {
       // Execute our file with 'browser' process scope argument
       var cp = exec('node ~/btcp-explorer/node_modules/store-demo/get_wallet_address.js -browser '
-       +parseInt(req.query.merchantid,10), function callback(error, stdout, stderr){
+       +parseInt(req.query.merchantid,10)+" "
+       +parseInt(req.query.walletid,10)+" "
+       // TODO: regex on this to only allow alphanums
+       // +("undefined" != typeof req.query.derivedxpub ? req.query.derivedxpub.replace(/^[a-z0-9]+$/i,'') : '')
+       +req.query.derivedxpub
+       ,function callback(error, stdout, stderr){
         // If error, console log it, return error JSON
         if (error) {
           console.log(error)
           res.send(
             '{\n'+
             '  "status"        : "error",\n'+
-            '  "statusMessage" : "callback error when getting wallet address"\n'+
+            '  "statusMessage" : "callback error when getting wallet address: '+error+'"\n'+
             '}'
           )
         // If strerr, console log it, return error JSON
@@ -173,7 +157,7 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
           res.send(
             '{\n'+
             '  "status"        : "error",\n'+
-            '  "statusMessage" : "stderr when getting wallet address"\n'+
+            '  "statusMessage" : "stderr when getting wallet address: '+stderr+'"\n'+
             '}'
           )
         // If successful stdout, return JSON (need to chop off any string to the left
@@ -188,7 +172,8 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
     }
   })
 
-  // /complete_transaction path
+  // /complete_transaction path-- TODO!
+/*
   app.get('/complete_transaction', function (req, res) {
     // Check we have correct API key
     if (req.query.apikey != config.apiKey) {
@@ -208,7 +193,7 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
           res.send(
             '{\n'+
             '  "status"        : "error",\n'+
-            '  "statusMessage" : "callback error when completing transaction"\n'+
+            '  "statusMessage" : "callback error when completing transaction: '+error+'"\n'+
             '}'
           )
         // If strerr, console log it, return error JSON
@@ -217,7 +202,7 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
           res.send(
             '{\n'+
             '  "status"        : "error",\n'+
-            '  "statusMessage" : "stderr when getting completing transaction"\n'+
+            '  "statusMessage" : "stderr when getting completing transaction: '+stderr+'"\n'+
             '}'
           )
         // If successful stdout, return JSON (need to chop off any string to the left
@@ -231,6 +216,7 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
       });
     }
   })
+*/
 
   /*
   app.post('/invoice', function(req, res, next) {
@@ -274,7 +260,7 @@ PizzaShop.prototype.buildInvoiceHTML = function(addressIndex, totalSatoshis) {
   // Address for this invoice
   // Here, "/0/" == External addrs, "/1/" == Internal (change) addrs
   //TODO - use correct lib+method - bitcore-lib and deriveChild
-  //let b_new = require('bitcore-lib');  
+  //let b_new = require('bitcore-lib');
   //let k = b_new.HDPublicKey(this.xpub);
   //let address = k.deriveChild("/0/" + addressIndex).publicKey.toAddress();
   let k = bitcore.HDPublicKey(this.xpub);
