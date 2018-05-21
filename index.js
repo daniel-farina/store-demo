@@ -135,11 +135,11 @@ PizzaShop.prototype.setupRoutes = function(app, express) {
       )
     } else {
       // Execute our file with 'browser' process scope argument
+       // TODO: regex on derivedxpub to only allow alphanums
+       // +("undefined" != typeof req.query.derivedxpub ? req.query.derivedxpub.replace(/^[a-z0-9]+$/i,'') : '')
       var cp = exec('node ~/btcp-explorer/node_modules/store-demo/get_wallet_address.js -browser '
        +parseInt(req.query.merchantid,10)+" "
        +parseInt(req.query.walletid,10)+" "
-       // TODO: regex on this to only allow alphanums
-       // +("undefined" != typeof req.query.derivedxpub ? req.query.derivedxpub.replace(/^[a-z0-9]+$/i,'') : '')
        +req.query.derivedxpub
        ,function callback(error, stdout, stderr){
         // If error, console log it, return error JSON
