@@ -1,4 +1,8 @@
 'use strict';
+//Load config file
+var path = require("path");
+var config = require('read-config')(path.join(__dirname, 'config.json'));
+
 
 // Set initial details, also set here for global scoping reasons
 var baseHDPubKey = ""
@@ -64,7 +68,7 @@ const Product = require('./models.js').Product;
 var options = require('read-config')(path.join(__dirname, '/../../bitcore-node.json')).servicesConfig['store-demo'];
 
 // Set out dummy URL and start a connection
-const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
+const DUMMY_MONGO_URL = config.MongoDb;
 mongoose.connect(options.mongoURL || DUMMY_MONGO_URL, null).then(m => {
 
   if (processScope == "CLI") {
