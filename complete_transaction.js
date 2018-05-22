@@ -1,7 +1,4 @@
 'use strict';
-//Load config file
-var path = require("path");
-var config = require('read-config')(path.join(__dirname, 'config.json'));
 
 // Detect if calling via CLi or API
 const processScope = process.argv[2] == "-browser"
@@ -16,7 +13,7 @@ const Merchant = require('./models.js').Merchant;
 const Product = require('./models.js').Product;
 const Invoice = require('./models.js').Invoice;
 
-const DUMMY_MONGO_URL = config.MongoDb;
+const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
 mongoose.connect(DUMMY_MONGO_URL);
 
 const merchantID = 1;

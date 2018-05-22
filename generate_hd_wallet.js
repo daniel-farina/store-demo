@@ -1,7 +1,4 @@
 'use strict';
-//Load config file
-var path = require("path");
-var config = require('read-config')(path.join(__dirname, 'config.json'));
 
 // BTCP - BIP44 + BIP39 / HD wallet setup
 
@@ -17,7 +14,7 @@ mongoose.Promise = require('bluebird'); //finally()
 const Merchant = require('./models.js').Merchant;
 const Product = require('./models.js').Product;
 
-const DUMMY_MONGO_URL = config.MongoDb;
+const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
 mongoose.connect(DUMMY_MONGO_URL);
 
 console.log('\nGenerating your Master Private Key - this will only be shown ONCE!');

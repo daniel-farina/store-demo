@@ -1,7 +1,4 @@
 'use strict';
-//Load config file
-var path = require("path");
-var config = require('read-config')(path.join(__dirname, 'config.json'));
 
 // DO NOT RUN THIS FILE FROM THE BROWSER, SHOULD BE RUN ON SERVER ONLY IF REALLY NEEDED
 
@@ -44,7 +41,7 @@ var derivedHDPublicKey = xprv.deriveChild(externalAddrPath).hdPublicKey;
 var derivedXpubkey = derivedHDPublicKey.xpubkey.toString();
 
 // Set out dummy URL and start a connection
-const DUMMY_MONGO_URL = config.MongoDb;
+const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
 mongoose.connect(options.mongoURL || DUMMY_MONGO_URL, null).then(m => {
 
   if (processScope == "CLI") {

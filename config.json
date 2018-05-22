@@ -1,5 +1,4 @@
 {
   "apiKey" : "apikeyhere",
-  "defaultMerchantID" : 1,
-  "MongoDb" : "mongodb://localhost:27017/store-demo"
+  "defaultMerchantID" : 1
 }

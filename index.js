@@ -30,7 +30,7 @@ var config = require('read-config')(path.join(__dirname, 'config.json'));
 const Merchant = require('./models').Merchant;
 const Invoice = require('./models').Invoice;
 const Product = require('./models').Product;
-const DUMMY_MONGO_URL = config.MongoDb;
+const DUMMY_MONGO_URL = 'mongodb://localhost:27017/store-demo';
 
 function PizzaShop(options) {
   EventEmitter.call(this);
